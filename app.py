@@ -2,7 +2,10 @@ from html import escape
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote_plus, urlparse
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+from socket import timeout as SocketTimeout
+from time import sleep
 import re
 
 
@@ -13,12 +16,33 @@ USER_AGENT = (
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/123.0.0.0 Safari/537.36"
 )
+REQUEST_TIMEOUT = 25
+MAX_RETRIES = 2
 
 
 def fetch_page(url: str) -> tuple[str, str]:
     request = Request(url, headers={"User-Agent": USER_AGENT})
-    with urlopen(request, timeout=20) as response:
-        return response.read().decode("utf-8", errors="ignore"), response.geturl()
+
+    for attempt in range(MAX_RETRIES + 1):
+        try:
+            with urlopen(request, timeout=REQUEST_TIMEOUT) as response:
+                return response.read().decode("utf-8", errors="ignore"), response.geturl()
+        except HTTPError as exc:
+            if exc.code in (502, 504):
+                if attempt < MAX_RETRIES:
+                    sleep(1 + attempt)
+                    continue
+                raise ValueError(
+                    "zerozero.pt did not respond correctly. Please try again in a moment."
+                ) from exc
+            raise
+        except (URLError, SocketTimeout) as exc:
+            if attempt < MAX_RETRIES:
+                sleep(1 + attempt)
+                continue
+            raise ValueError(
+                "Could not reach zerozero.pt right now. Please try again in a moment."
+            ) from exc
 
 
 def normalize_zerozero_url(path_or_url: str) -> str:
@@ -102,22 +126,54 @@ def search_club(club_name: str) -> dict[str, str]:
     }
 
 
-def render_result_block(result: dict[str, str] | None = None, error: str = "") -> str:
-    if error:
-        return f"""
-        <div class="message error">{escape(error)}</div>
-        """
+def render_kit_card(result: dict[str, str], label: str) -> str:
+    club_name = escape(result["club_name"])
+    return f"""
+          <article class="kit-card">
+            <p class="eyebrow">{escape(label)}</p>
+            <h2>{club_name}</h2>
+            <a class="source" href="{escape(result["team_url"])}" target="_blank" rel="noreferrer">
+              Open team page on zerozero.pt
+            </a>
+            <div class="image-wrap">
+              <img src="{escape(result["kit_image_url"])}" alt="Kit of {club_name}" />
+            </div>
+          </article>
+    """
 
-    if result:
+
+def render_kit_error_card(team_name: str, error: str, label: str) -> str:
+    return f"""
+          <article class="kit-card">
+            <p class="eyebrow">{escape(label)}</p>
+            <h2>{escape(team_name)}</h2>
+            <div class="message error kit-error">{escape(error)}</div>
+          </article>
+    """
+
+
+def render_result_block(results: list[dict[str, str]] | None = None) -> str:
+    if results:
+        labels = ["Team 1 kit", "Team 2 kit"]
+        cards = []
+        for index, result in enumerate(results):
+            label = labels[index] if index < len(labels) else "Team kit"
+            if result["status"] == "ok":
+                cards.append(render_kit_card(result, label))
+            else:
+                cards.append(render_kit_error_card(result["query"], result["error"], label))
+
         return f"""
         <section class="card">
-          <p class="eyebrow">Kit found on zerozero.pt</p>
-          <h2>{escape(result["club_name"])}</h2>
-          <a class="source" href="{escape(result["team_url"])}" target="_blank" rel="noreferrer">
-            Open team page on zerozero.pt
-          </a>
-          <div class="image-wrap">
-            <img src="{escape(result["kit_image_url"])}" alt="Kit of {escape(result["club_name"])}" />
+          <div class="comparison-head">
+            <p class="eyebrow">Referee kit contrast check</p>
+            <h2>Compare both teams</h2>
+            <p>
+              Use the two kits below to choose referee clothing that stands apart from both teams.
+            </p>
+          </div>
+          <div class="comparison-grid">
+            {"".join(cards)}
           </div>
         </section>
         """
@@ -125,11 +181,24 @@ def render_result_block(result: dict[str, str] | None = None, error: str = "") -
     return ""
 
 
-def render_page(club_query: str = "", result: dict[str, str] | None = None, error: str = "") -> str:
+def render_clear_link(team_a_query: str = "", team_b_query: str = "") -> str:
+    if not team_a_query and not team_b_query:
+        return ""
+
+    return '<a class="clear-link" href="/" aria-label="Clear search">Clear</a>'
+
+
+def render_page(
+    team_a_query: str = "",
+    team_b_query: str = "",
+    results: list[dict[str, str]] | None = None,
+) -> str:
     template = TEMPLATE_PATH.read_text(encoding="utf-8")
     return (
-        template.replace("{{club_query}}", escape(club_query))
-        .replace("{{result_block}}", render_result_block(result=result, error=error))
+        template.replace("{{team_a_query}}", escape(team_a_query))
+        .replace("{{team_b_query}}", escape(team_b_query))
+        .replace("{{clear_link}}", render_clear_link(team_a_query, team_b_query))
+        .replace("{{result_block}}", render_result_block(results=results))
     )
 
 
@@ -141,17 +210,33 @@ class ClubKitHandler(BaseHTTPRequestHandler):
             return
 
         params = parse_qs(parsed_url.query)
-        club_name = params.get("club", [""])[0].strip()
-        result = None
-        error = ""
+        team_a_name = params.get("team_a", params.get("club", [""]))[0].strip()
+        team_b_name = params.get("team_b", [""])[0].strip()
+        team_names = [name for name in (team_a_name, team_b_name) if name]
+        results = None
 
-        if club_name:
-            try:
-                result = search_club(club_name)
-            except Exception as exc:  # pragma: no cover - basic fallback for runtime errors
-                error = str(exc)
+        if team_names:
+            results = []
+            for team_name in team_names:
+                try:
+                    result = search_club(team_name)
+                    result["status"] = "ok"
+                    result["query"] = team_name
+                    results.append(result)
+                except Exception as exc:  # pragma: no cover - basic fallback for runtime errors
+                    results.append(
+                        {
+                            "status": "error",
+                            "query": team_name,
+                            "error": str(exc),
+                        }
+                    )
 
-        page = render_page(club_query=club_name, result=result, error=error).encode("utf-8")
+        page = render_page(
+            team_a_query=team_a_name,
+            team_b_query=team_b_name,
+            results=results,
+        ).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(page)))

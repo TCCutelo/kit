@@ -4,17 +4,51 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Football Club Kit Search</title>
+    <script>
+      try {
+        document.documentElement.dataset.theme =
+          localStorage.getItem("kit-theme") === "grey" ? "grey" : "light";
+      } catch {
+        document.documentElement.dataset.theme = "light";
+      }
+    </script>
     <style>
       :root {
+        color-scheme: light;
         --bg: #eef3ea;
+        --bg-soft: #dde9dd;
         --panel: #fffdf8;
+        --panel-strong: #ffffff;
         --ink: #122020;
         --muted: #546060;
         --accent: #1f7a53;
         --accent-dark: #125239;
         --line: #d5dfd1;
+        --field: #ffffff;
+        --field-focus: #f8fbf6;
+        --shadow: rgba(18, 32, 32, 0.08);
         --error-bg: #fff1ef;
         --error-text: #9f2f1d;
+        --error-line: #f3c7bf;
+      }
+
+      [data-theme="grey"] {
+        color-scheme: dark;
+        --bg: #151719;
+        --bg-soft: #1d2023;
+        --panel: #23272b;
+        --panel-strong: #2b3035;
+        --ink: #eef2f3;
+        --muted: #aab4b8;
+        --accent: #71c49a;
+        --accent-dark: #3d9b72;
+        --line: #3a4046;
+        --field: #181b1e;
+        --field-focus: #232a2d;
+        --shadow: rgba(0, 0, 0, 0.32);
+        --error-bg: #352222;
+        --error-text: #ffb6aa;
+        --error-line: #76453f;
       }
 
       * {
@@ -28,7 +62,15 @@
         color: var(--ink);
         background:
           radial-gradient(circle at top left, rgba(31, 122, 83, 0.18), transparent 28%),
-          linear-gradient(145deg, #f7fbf5 0%, var(--bg) 55%, #dde9dd 100%);
+          linear-gradient(145deg, #f7fbf5 0%, var(--bg) 55%, var(--bg-soft) 100%);
+      }
+
+      [data-theme="grey"] body {
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        background:
+          linear-gradient(145deg, var(--bg-soft) 0%, var(--bg) 44%, #101214 100%);
       }
 
       .shell {
@@ -42,10 +84,39 @@
         backdrop-filter: blur(10px);
       }
 
+      [data-theme="grey"] .shell {
+        background: var(--panel);
+        background: color-mix(in srgb, var(--panel) 92%, transparent);
+        border-color: var(--line);
+        border-radius: 8px;
+        box-shadow: 0 20px 50px var(--shadow);
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 22px;
+      }
+
+      .brand {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
       h1 {
         margin: 0;
         font-size: clamp(2.2rem, 4vw, 3.8rem);
         line-height: 0.98;
+      }
+
+      [data-theme="grey"] h1 {
+        line-height: 1.04;
       }
 
       .intro {
@@ -55,11 +126,25 @@
         font-size: 1.05rem;
       }
 
-      form {
+      .search-form {
         display: grid;
-        grid-template-columns: 1fr auto;
+        grid-template-columns: 1fr 1fr auto;
         gap: 12px;
+        align-items: end;
         margin-bottom: 26px;
+      }
+
+      .field {
+        display: grid;
+        gap: 8px;
+      }
+
+      label {
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
       }
 
       input {
@@ -69,6 +154,26 @@
         padding: 16px 20px;
         font-size: 1rem;
         background: white;
+        outline: 0;
+        transition:
+          background 160ms ease,
+          border-color 160ms ease,
+          box-shadow 160ms ease;
+      }
+
+      [data-theme="grey"] input {
+        color: var(--ink);
+        background: var(--field);
+      }
+
+      input:focus {
+        border-color: var(--accent);
+        background: var(--field-focus);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 24%, transparent);
+      }
+
+      [data-theme="grey"] input {
+        border-radius: 8px;
       }
 
       button {
@@ -80,6 +185,67 @@
         color: white;
         background: linear-gradient(135deg, var(--accent), var(--accent-dark));
         cursor: pointer;
+        transition:
+          filter 160ms ease,
+          transform 160ms ease;
+      }
+
+      [data-theme="grey"] button {
+        border-radius: 8px;
+        color: #07110d;
+      }
+
+      button:hover {
+        filter: brightness(1.06);
+      }
+
+      button:active {
+        transform: translateY(1px);
+      }
+
+      .theme-toggle {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        min-width: 44px;
+        min-height: 44px;
+        padding: 0;
+        border: 1px solid var(--line);
+        color: var(--ink);
+        background: var(--panel-strong);
+      }
+
+      .form-actions {
+        display: grid;
+        gap: 10px;
+        justify-items: center;
+        align-self: end;
+      }
+
+      .form-actions button {
+        width: 100%;
+      }
+
+      .clear-link {
+        color: var(--muted);
+        font-size: 0.86rem;
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      .clear-link:hover {
+        color: var(--accent-dark);
+        text-decoration: underline;
+      }
+
+      [data-theme="grey"] .clear-link:hover {
+        color: var(--accent);
+      }
+
+      .theme-toggle:hover {
+        filter: none;
+        border-color: var(--accent);
       }
 
       .card,
@@ -90,10 +256,45 @@
         padding: 22px;
       }
 
+      .comparison-head {
+        margin-bottom: 22px;
+      }
+
+      .comparison-head p:last-child {
+        margin: 10px 0 0;
+        max-width: 680px;
+        color: var(--muted);
+        font-size: 1rem;
+        line-height: 1.5;
+      }
+
+      .comparison-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .kit-card {
+        min-width: 0;
+      }
+
+      [data-theme="grey"] .card,
+      [data-theme="grey"] .message {
+        border-radius: 8px;
+      }
+
       .message.error {
         background: var(--error-bg);
         color: var(--error-text);
-        border-color: #f3c7bf;
+        border-color: var(--error-line);
+      }
+
+      .kit-error {
+        margin-top: 20px;
+        min-height: 160px;
+        display: grid;
+        align-content: center;
+        line-height: 1.5;
       }
 
       .eyebrow {
@@ -101,12 +302,14 @@
         text-transform: uppercase;
         letter-spacing: 0.16em;
         font-size: 0.72rem;
+        font-weight: 700;
         color: var(--muted);
       }
 
       h2 {
         margin: 0;
         font-size: clamp(1.8rem, 3vw, 2.7rem);
+        letter-spacing: 0;
       }
 
       .source {
@@ -114,6 +317,14 @@
         margin-top: 10px;
         color: var(--accent-dark);
         text-decoration: none;
+      }
+
+      [data-theme="grey"] .source {
+        color: var(--accent);
+      }
+
+      .source:hover {
+        text-decoration: underline;
       }
 
       .image-wrap {
@@ -125,7 +336,19 @@
           white;
         display: grid;
         place-items: center;
-        min-height: 560px;
+        min-height: 460px;
+      }
+
+      [data-theme="grey"] .image-wrap {
+        border-radius: 8px;
+        background:
+          linear-gradient(
+            180deg,
+            color-mix(in srgb, var(--accent) 10%, transparent),
+            color-mix(in srgb, var(--panel-strong) 94%, transparent)
+          ),
+          var(--panel-strong);
+        border: 1px solid var(--line);
       }
 
       img {
@@ -140,6 +363,7 @@
         margin-top: 18px;
         color: var(--muted);
         font-size: 0.92rem;
+        line-height: 1.5;
       }
 
       @media (max-width: 720px) {
@@ -149,7 +373,15 @@
           border-radius: 20px;
         }
 
-        form {
+        [data-theme="grey"] .shell {
+          border-radius: 8px;
+        }
+
+        .topbar {
+          align-items: flex-start;
+        }
+
+        .search-form {
           grid-template-columns: 1fr;
         }
 
@@ -157,30 +389,63 @@
           width: 100%;
         }
 
+        .theme-toggle {
+          width: 44px;
+        }
+
         .image-wrap {
           min-height: 420px;
           padding: 20px;
+        }
+
+        .comparison-grid {
+          grid-template-columns: 1fr;
         }
       }
     </style>
   </head>
   <body>
     <main class="shell">
-      <h1>Search a football club and see its kit</h1>
+      <div class="topbar">
+        <p class="brand">Football kit lookup</p>
+        <button class="theme-toggle" type="button" aria-label="Switch to grey theme" title="Switch theme">
+          T
+        </button>
+      </div>
+
+      <h1>Compare two football kits before the match</h1>
       <p class="intro">
-        Type a club name, and this Python site searches zerozero.pt, opens the first matching team page,
-        and shows the equipment image used there.
+        Type both team names and check their kits side by side, so the referee team can choose clothing
+        that clearly contrasts with the players.
       </p>
 
-      <form method="GET" action="/">
-        <input
-          type="text"
-          name="club"
-          placeholder="Example: Benfica, Porto, Sporting"
-          value="{{club_query}}"
-          required
-        />
-        <button type="submit">Search</button>
+      <form class="search-form" method="GET" action="/">
+        <div class="field">
+          <label for="team-a">Team 1</label>
+          <input
+            id="team-a"
+            type="text"
+            name="team_a"
+            placeholder="Example: Benfica"
+            value="{{team_a_query}}"
+            required
+          />
+        </div>
+        <div class="field">
+          <label for="team-b">Team 2</label>
+          <input
+            id="team-b"
+            type="text"
+            name="team_b"
+            placeholder="Example: Sporting"
+            value="{{team_b_query}}"
+            required
+          />
+        </div>
+        <div class="form-actions">
+          <button type="submit">Compare</button>
+          {{clear_link}}
+        </div>
       </form>
 
       {{result_block}}
@@ -190,11 +455,48 @@
       </p>
     </main>
     <script>
-      const kitImage = document.querySelector(".image-wrap img");
+      const root = document.documentElement;
+      const themeToggle = document.querySelector(".theme-toggle");
+      const savedTheme = root.dataset.theme || "light";
+      const queryInputs = document.querySelectorAll("input[type='text']");
 
-      if (kitImage) {
+      queryInputs.forEach((input) => {
+        if (input.value.startsWith("{{") && input.value.endsWith("}}")) {
+          input.value = "";
+        }
+      });
+
+      const saveTheme = (theme) => {
+        try {
+          localStorage.setItem("kit-theme", theme);
+        } catch {
+          return;
+        }
+      };
+
+      const applyTheme = (theme) => {
+        root.dataset.theme = theme === "grey" ? "grey" : "light";
+        themeToggle.setAttribute(
+          "aria-label",
+          theme === "grey" ? "Switch to light theme" : "Switch to grey theme"
+        );
+      };
+
+      applyTheme(savedTheme);
+
+      themeToggle.addEventListener("click", () => {
+        const nextTheme = root.dataset.theme === "grey" ? "light" : "grey";
+        saveTheme(nextTheme);
+        applyTheme(nextTheme);
+      });
+
+      const kitImages = document.querySelectorAll(".image-wrap img");
+
+      kitImages.forEach((kitImage) => {
         const sizeImage = () => {
-          const containerWidth = Math.min(window.innerWidth - 120, 520);
+          const imageWrap = kitImage.closest(".image-wrap");
+          const availableWidth = imageWrap ? imageWrap.clientWidth - 64 : window.innerWidth - 120;
+          const containerWidth = Math.min(Math.max(availableWidth, 160), 520);
           const naturalWidth = kitImage.naturalWidth || 0;
           const naturalHeight = kitImage.naturalHeight || 0;
 
@@ -218,7 +520,7 @@
         }
 
         window.addEventListener("resize", sizeImage);
-      }
+      });
     </script>
   </body>
 </html>
