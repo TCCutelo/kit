@@ -6,18 +6,47 @@ The app searches `zerozero.pt`, opens the first matching team pages, and display
 
 ## Running Locally
 
-```powershell
-.\.venv\Scripts\python.exe app.py
+Open the Windows Command Prompt (`cmd.exe`) and go to the project folder:
+
+```cmd
+cd C:\Users\Utilizador\TesteSoPython\kit
 ```
 
-Open `http://127.0.0.1:8000`.
+Then activate the virtual environment:
+
+```cmd
+.venv\Scripts\activate.bat
+```
+
+Then run the Streamlit app:
+
+```cmd
+python -m streamlit run app.py
+```
+
+Open `http://localhost:8501`.
+
+## Stopping the App
+
+To stop the app, go back to the Command Prompt window where Streamlit is running and press:
+
+```cmd
+Ctrl+C
+```
+
+You can also run it without activating the virtual environment:
+
+```cmd
+.\.venv\Scripts\python.exe -m streamlit run app.py
+```
 
 ## Development
 
-The server is a plain Python `http.server` process. Restart it after changes to `app.py`; browser refresh alone only reloads the current response.
+Streamlit reloads the app when `app.py` changes. If the browser does not update, stop the server with `Ctrl+C` and start it again.
 
 ## Notes
 
-- Uses only Python standard library modules.
+- Uses Streamlit for the web interface.
+- This app does not perform OCR or extract text from kit images. It finds kit image URLs in the team page HTML.
 - Kit images are loaded from `zerozero.pt`.
 - Search quality depends on the first team match returned by `zerozero.pt`.
